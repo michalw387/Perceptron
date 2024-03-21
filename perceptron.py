@@ -1,5 +1,7 @@
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class Perceptron:
@@ -26,11 +28,14 @@ class Perceptron:
     @staticmethod
     def activation_fun(z):
         # sigmoid function
-        return 1 / (1 + np.exp(-z))
+        return 1.0 / (1.0 + np.exp(-z))
 
     def cost_fun(self, A, Y, m):
         # binary cross-entropy
-        return -np.sum(Y * np.log(A) + (1.0 - Y) * np.log(1.0 - A)) / m
+        epsilon = 1e-9  # Small constant to prevent log(0)
+        return (
+            -np.sum(Y * np.log(A + epsilon) + (1.0 - Y) * np.log(1.0 - A + epsilon)) / m
+        )
 
     def feedforward(self, a):
         return self.activation_fun((self.weights @ a) + self.bias)
@@ -47,22 +52,27 @@ class Perceptron:
             if i % 10 == 0:
                 print(f"Cost in {i} iteration: {self.costs[-1]}")
 
-            # update weights and bias
+            # calculate gradients
             dw = (np.array(self.x_train).T @ (A - self.y_train)) / self.m
             db = np.sum(A - self.y_train) / self.m
 
+            # update weights and bias
             self.weights = self.weights - dw * self.learning_rate
             self.bias = self.bias - db * self.learning_rate
 
-    def start_perceptron(self):
-        self.images = np.load("data/images.npy")
-        self.labels = np.load("data/labels.npy")
-        self.reshape_data()
-        self.standardizate_data()
-        self.split_data()
-        self.initialize_variables()
-
-        self.learn()
+    def plot_cost(self):
+        plt.figure(figsize=(10, 6))
+        plt.title("Cost function")
+        plt.plot(
+            range(len(self.costs)),
+            self.costs,
+            color="orange",
+            label="cost",
+        )
+        plt.xlabel("Iteration")
+        plt.ylabel("Cost function")
+        plt.grid()
+        plt.show()
 
     def predict(self, X):
         X = np.array(X)
@@ -82,15 +92,29 @@ class Perceptron:
         Y_pred_test = self.predict(self.x_test)
 
         print(
-            "train accuracy: {} %".format(
+            "Train accuracy: {} %".format(
                 round(100 - np.mean(np.abs(Y_pred_train - self.y_train)) * 100, 2)
             )
         )
         print(
-            "test accuracy: {} %".format(
+            "Test accuracy: {} %".format(
                 round(100 - np.mean(np.abs(Y_pred_test - self.y_test)) * 100, 2)
             )
         )
+
+        f1_test = f1_score(self.y_test, Y_pred_test)
+        print(f"Test F1 score = {round(f1_test, 2)}")
+
+    def start_perceptron(self):
+        self.images = np.load("data/images.npy")
+        self.labels = np.load("data/labels.npy")
+        self.reshape_data()
+        self.standardizate_data()
+        self.split_data()
+        self.initialize_variables()
+
+        self.learn()
+        self.plot_cost()
 
 
 p = Perceptron(epochs=200, learning_rate=0.001)
